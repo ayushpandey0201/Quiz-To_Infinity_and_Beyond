@@ -1,15 +1,14 @@
 import mongoose from 'mongoose';
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
+if (!process.env.MONGODB_URI) {
   throw new Error("❌ Please define the MONGODB_URI environment variable in Vercel");
 }
+const MONGODB_URI: string = process.env.MONGODB_URI;
 
 // Define the cached connection type
 interface CachedConnection {
-  conn: typeof mongoose | null;
-  promise: Promise<typeof mongoose> | null;
+  conn: mongoose.Mongoose | null;
+  promise: Promise<mongoose.Mongoose> | null;
 }
 
 // Extend the global type
@@ -23,22 +22,18 @@ if (!global.mongoose) {
   global.mongoose = cached;
 }
 
-async function connectDB() {
+async function connectDB(): Promise<mongoose.Mongoose> {
   if (cached.conn) {
     return cached.conn;
   }
 
   if (!cached.promise) {
-    const opts = {
-      bufferCommands: false,
-    };
-
+    const opts = { bufferCommands: false };
     cached.promise = mongoose.connect(MONGODB_URI, opts);
   }
-  
+
   cached.conn = await cached.promise;
   return cached.conn;
 }
 
 export default connectDB;
-
