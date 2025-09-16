@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: quiz-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: quiz-app
+    volumes:
+      - mongodb_data:/data/db
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - quiz-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quiz-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      MONGODB_URI: mongodb://admin:password123@mongodb:27017/quiz-app?authSource=admin
+      NODE_ENV: production
+    depends_on:
+      - mongodb
+    networks:
+      - quiz-network
+
+volumes:
+  mongodb_data:
+
+networks:
+  quiz-network:
+    driver: bridge
