@@ -47,14 +47,14 @@ export function setSocket(socketInstance: SocketIOServer) {
 }
 
 // Emit leaderboard updates
-export function emitLeaderboardUpdate(gameId: string, leaderboard: any[]) {
+export function emitLeaderboardUpdate(gameId: string, leaderboard: unknown[]) {
   if (io) {
     io.to(`game:${gameId}`).emit('leaderboard-update', leaderboard);
   }
 }
 
 // Emit game state updates
-export function emitGameStateUpdate(gameId: string, gameState: any) {
+export function emitGameStateUpdate(gameId: string, gameState: unknown) {
   if (io) {
     io.to(`game:${gameId}`).emit('game-state-update', gameState);
   }

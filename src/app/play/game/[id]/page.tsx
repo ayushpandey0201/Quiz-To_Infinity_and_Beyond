@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, Trophy, Eye, ArrowRight, Check, X, Settings } from 'lucide-react';
+import { ArrowLeft, Users, ArrowRight, Check, X, Settings } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
 interface Question {
@@ -57,7 +57,6 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [showTeamSetup, setShowTeamSetup] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<number>(1);
-  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
   const [answerResult, setAnswerResult] = useState<unknown>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -73,10 +72,42 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       const { id } = await params;
       setGameId(id);
       
-      fetchGame(id);
-      fetchMovies(id);
-      fetchTeams(id);
-      fetchLeaderboard(id);
+      // Fetch initial data
+      try {
+        const [gameResponse, moviesResponse, teamsResponse, leaderboardResponse] = await Promise.all([
+          fetch(`/api/games/${id}`),
+          fetch(`/api/games/${id}/movies`),
+          fetch(`/api/games/${id}/teams`),
+          fetch(`/api/games/${id}/leaderboard`)
+        ]);
+
+        if (gameResponse.ok) {
+          const gameData = await gameResponse.json();
+          setGame(gameData);
+        }
+
+        if (moviesResponse.ok) {
+          const moviesData = await moviesResponse.json();
+          setMovies(moviesData);
+        }
+
+        if (teamsResponse.ok) {
+          const teamsData = await teamsResponse.json();
+          setTeams(teamsData);
+          if (teamsData.length === 0) {
+            setShowTeamSetup(true);
+          }
+        }
+
+        if (leaderboardResponse.ok) {
+          const leaderboardData = await leaderboardResponse.json();
+          setLeaderboard(leaderboardData);
+        }
+      } catch (error) {
+        console.error('Error fetching initial data:', error);
+      } finally {
+        setLoading(false);
+      }
 
       // Initialize Socket.IO
       const socketInstance = io();

@@ -33,7 +33,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    checkAuth();
+    const initAuth = async () => {
+      try {
+        const response = await fetch('/api/auth/verify');
+        if (response.ok) {
+          const data = await response.json();
+          setUser(data.user);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    initAuth();
   }, []);
 
   const checkAuth = async () => {

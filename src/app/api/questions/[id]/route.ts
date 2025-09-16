@@ -3,10 +3,11 @@ import connectDB from '../../../../../backend/lib/mongodb';
 import { Question } from '../../../../../backend/models';
 
 // GET single question
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const question = await Question.findById(params.id);
+    const { id } = await params;
+    const question = await Question.findById(id);
     
     if (!question) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 }
 
 // PUT (update) question
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
     const { text, options, correctIndex } = await req.json();
@@ -37,8 +38,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Correct index must be between 0 and 3' }, { status: 400 });
     }
     
+    const { id } = await params;
     const question = await Question.findByIdAndUpdate(
-      params.id,
+      id,
       { text, options, correctIndex },
       { new: true, runValidators: true }
     );
@@ -55,10 +57,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 }
 
 // DELETE question
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const question = await Question.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const question = await Question.findByIdAndDelete(id);
     
     if (!question) {
       return NextResponse.json({ error: 'Question not found' }, { status: 404 });

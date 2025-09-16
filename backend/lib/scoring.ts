@@ -32,6 +32,6 @@ export function calculateScore(
   return Math.round(score);
 }
 
-export function getQuestionCounts(questions: any[], level: 'easy' | 'medium' | 'hard'): number {
+export function getQuestionCounts(questions: { level: string; opened: boolean }[], level: 'easy' | 'medium' | 'hard'): number {
   return questions.filter(q => q.level === level && !q.opened).length;
 }

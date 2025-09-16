@@ -61,8 +61,28 @@ export default function GameDetailsPage({ params }: { params: Promise<{ id: stri
   useEffect(() => {
     const initializePage = async () => {
       const { id } = await params;
-      fetchGame(id);
-      fetchMovies(id);
+      
+      // Fetch data directly to avoid dependency issues
+      try {
+        const [gameResponse, moviesResponse] = await Promise.all([
+          fetch(`/api/games/${id}`),
+          fetch(`/api/games/${id}/movies`)
+        ]);
+
+        if (gameResponse.ok) {
+          const gameData = await gameResponse.json();
+          setGame(gameData);
+        }
+
+        if (moviesResponse.ok) {
+          const moviesData = await moviesResponse.json();
+          setMovies(moviesData);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setLoading(false);
+      }
     };
     initializePage();
   }, [params]);

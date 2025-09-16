@@ -3,10 +3,10 @@ import connectDB from '../../../../../backend/lib/mongodb';
 import { Game, Movie, Level, Question } from '../../../../../backend/models';
 
 // DELETE movie
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const movieId = params.id;
+    const { id: movieId } = await params;
     
     // Find the movie
     const movie = await Movie.findById(movieId);
@@ -38,10 +38,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 }
 
 // GET single movie
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     await connectDB();
-    const movie = await Movie.findById(params.id)
+    const { id } = await params;
+    const movie = await Movie.findById(id)
       .populate({
         path: 'levels.easy levels.medium levels.hard',
         populate: {
