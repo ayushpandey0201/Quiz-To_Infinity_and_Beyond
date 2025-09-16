@@ -38,7 +38,7 @@ interface Game {
   movies: Movie[];
 }
 
-export default function GameDetailsPage({ params }: { params: { id: string } }) {
+export default function GameDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const [game, setGame] = useState<Game | null>(null);
   const [movies, setMovies] = useState<Movie[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,13 +59,18 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
   const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchGame();
-    fetchMovies();
-  }, []);
+    const initializePage = async () => {
+      const { id } = await params;
+      fetchGame(id);
+      fetchMovies(id);
+    };
+    initializePage();
+  }, [params]);
 
-  const fetchGame = async () => {
+  const fetchGame = async (gameId?: string) => {
     try {
-      const response = await fetch(`/api/games/${params.id}`);
+      const id = gameId || (await params).id;
+      const response = await fetch(`/api/games/${id}`);
       const data = await response.json();
       setGame(data);
     } catch (error) {
@@ -73,9 +78,10 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
     }
   };
 
-  const fetchMovies = async () => {
+  const fetchMovies = async (gameId?: string) => {
     try {
-      const response = await fetch(`/api/games/${params.id}/movies`);
+      const id = gameId || (await params).id;
+      const response = await fetch(`/api/games/${id}/movies`);
       const data = await response.json();
       setMovies(data);
     } catch (error) {
@@ -90,7 +96,8 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
     if (!newMovieTitle.trim()) return;
 
     try {
-      const response = await fetch(`/api/games/${params.id}/movies`, {
+      const { id } = await params;
+      const response = await fetch(`/api/games/${id}/movies`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newMovieTitle }),
@@ -115,7 +122,7 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          gameId: params.id,
+          gameId: (await params).id,
           movieId: selectedMovie,
           level: selectedLevel,
           text: newQuestion.text,
