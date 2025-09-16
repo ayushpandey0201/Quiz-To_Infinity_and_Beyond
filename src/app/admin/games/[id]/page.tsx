@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Film, HelpCircle, Edit, Trash2, Plus } from 'lucide-react';
+import { ArrowLeft, Film, HelpCircle, Edit, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
 
 interface Question {
   _id: string;
@@ -35,6 +35,7 @@ interface Game {
   title: string;
   description: string;
   status: string;
+  allowShowAnswer: boolean;
   movies: Movie[];
 }
 
@@ -57,6 +58,7 @@ export default function GameDetailsPage({ params }: { params: Promise<{ id: stri
     correctIndex: 0,
   });
   const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
 
   useEffect(() => {
     const initializePage = async () => {
@@ -245,6 +247,45 @@ export default function GameDetailsPage({ params }: { params: Promise<{ id: stri
     return movie.levels[level]?.questions?.length || 0;
   };
 
+  const handleToggleShowAnswer = async () => {
+    if (!game) return;
+    
+    console.log('Current game state:', game);
+    console.log('Current allowShowAnswer:', game.allowShowAnswer);
+    
+    setUpdating(true);
+    try {
+      const { id } = await params;
+      const newValue = !(game.allowShowAnswer ?? false);
+      console.log('Toggling allowShowAnswer to:', newValue);
+      
+      const response = await fetch(`/api/games/${id}/toggle-show-answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Toggle result:', result);
+        if (result.success && result.game) {
+          setGame(result.game);
+          alert(`✅ Show Answer ${result.newValue ? 'ENABLED' : 'DISABLED'} successfully!`);
+        }
+      } else {
+        const errorData = await response.text();
+        console.error('Failed to update show answer setting:', errorData);
+        alert('Failed to update show answer setting: ' + errorData);
+      }
+    } catch (error) {
+      console.error('Error updating show answer setting:', error);
+      alert('Network error: ' + error);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -267,6 +308,18 @@ export default function GameDetailsPage({ params }: { params: Promise<{ id: stri
           </div>
         </div>
         <div className="flex space-x-4">
+          <button
+            onClick={handleToggleShowAnswer}
+            disabled={updating}
+            className={`px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2 ${
+              (game?.allowShowAnswer ?? false)
+                ? 'bg-gradient-to-r from-red-500 to-pink-600 text-white' 
+                : 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
+            } ${updating ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {(game?.allowShowAnswer ?? false) ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            <span>{(game?.allowShowAnswer ?? false) ? 'Disable Show Answer' : 'Enable Show Answer'}</span>
+          </button>
           <button
             onClick={() => setShowMovieForm(true)}
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-3 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2"

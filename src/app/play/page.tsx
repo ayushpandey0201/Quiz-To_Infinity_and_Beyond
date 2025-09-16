@@ -82,7 +82,7 @@ export default function PlayPage() {
 
       {/* Games Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map((game) => (
+        {games.filter(game => game.status === 'live').map((game) => (
           <Link key={game._id} href={`/play/game/${game._id}`}>
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:bg-white/20 hover:scale-105 transition-all duration-300 cursor-pointer">
               <div className="flex items-center justify-between mb-4">
@@ -114,12 +114,17 @@ export default function PlayPage() {
         ))}
       </div>
 
-      {games.length === 0 && !loading && (
+      {games.filter(game => game.status === 'live').length === 0 && !loading && (
         <div className="text-center py-16">
-          <div className="text-gray-400 text-xl mb-4">No games available to play</div>
-          <p className="text-gray-500 mb-4">Check back later or contact an admin to start a game.</p>
-          <p className="text-red-400 text-sm mb-8">
-            If you&apos;re seeing this and expect games to be available, there might be a database connection issue.
+          <div className="text-gray-400 text-xl mb-4">No live games available to play</div>
+          <p className="text-gray-500 mb-4">
+            {games.length > 0 
+              ? 'Games exist but are not live yet. Ask an admin to start them.' 
+              : 'No games created yet. Contact an admin to create games.'
+            }
+          </p>
+          <p className="text-yellow-400 text-sm mb-8">
+            💡 Only games with &quot;Live&quot; status appear here for play.
           </p>
           <Link href="/" className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
             Back to Home

@@ -13,7 +13,16 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
     
     if (question.opened) {
-      return NextResponse.json({ error: 'Question already opened' }, { status: 400 });
+      // Return the question data instead of an error for already opened questions
+      return NextResponse.json({
+        _id: question._id,
+        text: question.text,
+        options: question.options,
+        correctIndex: question.correctIndex,
+        level: question.level,
+        opened: question.opened,
+        message: 'Question was already opened'
+      });
     }
     
     // Mark question as opened

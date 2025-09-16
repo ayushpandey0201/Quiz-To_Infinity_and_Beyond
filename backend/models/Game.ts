@@ -6,6 +6,7 @@ export interface IGame extends Document {
   description: string;
   movies: mongoose.Types.ObjectId[];
   status: 'not-started' | 'live' | 'finished';
+  allowShowAnswer: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -29,6 +30,10 @@ const GameSchema: Schema = new Schema({
     type: String,
     enum: ['not-started', 'live', 'finished'],
     default: 'not-started',
+  },
+  allowShowAnswer: {
+    type: Boolean,
+    default: false,
   },
 }, {
   timestamps: true,

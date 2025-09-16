@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, ArrowRight, Check, X, Settings } from 'lucide-react';
+import { ArrowLeft, Users, ArrowRight, Check, X, Settings, Eye } from 'lucide-react';
 import { io, Socket } from 'socket.io-client';
 
 interface Question {
@@ -45,6 +45,7 @@ interface Game {
   title: string;
   description: string;
   status: string;
+  allowShowAnswer: boolean;
   movies: Movie[];
 }
 
@@ -58,7 +59,18 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<number>(1);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [answerResult, setAnswerResult] = useState<unknown>(null);
+  const [answerResult, setAnswerResult] = useState<{
+    isCorrect: boolean;
+    correctAnswer: number;
+    scoreChange: number;
+    selectedOption: number;
+    team: {
+      number: number;
+      score: number;
+      correctCount: number;
+      wrongCount: number;
+    };
+  } | null>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTeamSelection, setShowTeamSelection] = useState(false);
@@ -66,6 +78,8 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [gameId, setGameId] = useState<string>('');
   const [teamOperationLoading, setTeamOperationLoading] = useState(false);
+  const [showPassTeamSelection, setShowPassTeamSelection] = useState(false);
+  const [showAnswerRevealed, setShowAnswerRevealed] = useState(false);
 
   useEffect(() => {
     const initializeGame = async () => {
@@ -262,7 +276,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
     }
 
     const levelQuestions = movie.levels[pendingQuestion.level]?.questions || [];
-    const nextQuestion = levelQuestions.find(q => !q.opened);
+    const nextQuestion = levelQuestions.find(q => !q.opened && !q.answered);
     
     if (!nextQuestion) {
       setDebugInfo('No more questions available in this level');
@@ -286,18 +300,29 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         const data = await response.json();
         setCurrentQuestion(data);
         setSelectedTeam(teamNumber);
-        setSelectedAnswer(null);
         setShowAnswer(false);
         setAnswerResult(null);
         setShowTeamSelection(false);
         setPendingQuestion(null);
-        setDebugInfo(`Question opened successfully for Team ${teamNumber}`);
+        
+        if (data.message) {
+          setDebugInfo(`${data.message} - Team ${teamNumber} can now answer`);
+        } else {
+          setDebugInfo(`Question opened successfully for Team ${teamNumber}`);
+        }
         fetchMovies(); // Refresh to update opened status
       } else {
         const errorData = await response.text();
         setDebugInfo(`API Error: ${response.status} - ${errorData}`);
         console.error('API Error:', response.status, errorData);
-        alert(`Failed to open question: ${response.status}`);
+        
+        // More user-friendly error messages
+        if (response.status === 400) {
+          setDebugInfo('This question has already been opened. Please refresh the page.');
+        } else {
+          setDebugInfo(`Failed to open question (${response.status}). Please try again.`);
+        }
+        
         setShowTeamSelection(false);
         setPendingQuestion(null);
       }
@@ -398,35 +423,97 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
     }
   };
 
-  const handlePass = async () => {
+  const handleOptionClick = async (selectedOptionIndex: number) => {
+    if (!currentQuestion) {
+      console.error('❌ No current question');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/questions/${currentQuestion._id}/answer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          teamNumber: selectedTeam,
+          selectedOptionIndex,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        // Add the selected option to the result for UI display
+        const resultWithSelection = {
+          ...result,
+          selectedOption: selectedOptionIndex
+        };
+        
+        setAnswerResult(resultWithSelection);
+        setShowAnswer(true);
+        fetchLeaderboard();
+        
+        // Show immediate feedback
+        const isCorrect = selectedOptionIndex === currentQuestion.correctIndex;
+        setDebugInfo(
+          isCorrect 
+            ? `🎉 Team ${selectedTeam} got it RIGHT! +${result.scoreChange} points` 
+            : `💭 Team ${selectedTeam} got it wrong. ${result.scoreChange} points`
+        );
+      } else {
+        const errorData = await response.json();
+        console.error('❌ API Error:', errorData);
+        setDebugInfo(`❌ Error: ${errorData.error || 'Failed to submit answer'}`);
+      }
+    } catch (error) {
+      console.error('❌ Error submitting answer:', error);
+      setDebugInfo('❌ Network error. Please try again.');
+    }
+  };
+
+  const handlePass = () => {
+    if (!currentQuestion) return;
+    setShowPassTeamSelection(true);
+  };
+
+  const handlePassToTeam = async (toTeamNumber: number) => {
     if (!currentQuestion) return;
 
-    const nextTeam = selectedTeam === teams.length ? 1 : selectedTeam + 1;
-    
     try {
       const response = await fetch(`/api/questions/${currentQuestion._id}/pass`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fromTeam: selectedTeam,
-          toTeam: nextTeam,
+          toTeam: toTeamNumber,
         }),
       });
 
       if (response.ok) {
-        setSelectedTeam(nextTeam);
-        setSelectedAnswer(null);
+        setDebugInfo(`✅ Question passed from Team ${selectedTeam} to Team ${toTeamNumber}!`);
+        setSelectedTeam(toTeamNumber);
+        setShowPassTeamSelection(false);
+      } else {
+        setDebugInfo('❌ Failed to pass question. Please try again.');
       }
     } catch (error) {
       console.error('Error passing question:', error);
+      setDebugInfo('❌ Network error. Please try again.');
     }
+  };
+
+  const handleShowAnswer = () => {
+    setShowAnswerRevealed(true);
+    setShowAnswer(true);
   };
 
   const closeQuestion = () => {
     setCurrentQuestion(null);
-    setSelectedAnswer(null);
     setShowAnswer(false);
     setAnswerResult(null);
+    setShowAnswerRevealed(false);
+    setShowPassTeamSelection(false);
   };
 
   const handleRestartGame = async () => {
@@ -606,24 +693,26 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       {/* Team Selection Modal */}
       {showTeamSelection && pendingQuestion && (
         <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-[100]">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
+          <div className="bg-white rounded-xl p-8 max-w-4xl w-full mx-4 shadow-2xl max-h-[90vh] flex flex-col">
             <h2 className="text-2xl font-bold mb-4 text-black">🎯 Select Team</h2>
             <p className="text-black mb-6">
               Which team is attempting this <span className="font-semibold text-blue-600">{pendingQuestion.level}</span> question?
             </p>
             {teams.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                {teams.map((team) => (
-                  <button
-                    key={team.teamNumber}
-                    onClick={() => handleTeamSelection(team.teamNumber)}
-                    className="p-4 bg-white border-2 border-gray-400 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 text-center transform hover:scale-105"
-                  >
-                    <div className="font-bold text-black text-lg">Team {team.teamNumber}</div>
-                    <div className="text-sm text-black">Score: {team.score}</div>
-                    <div className="text-xs text-gray-600">{team.correctCount}✓ / {team.wrongCount}✗</div>
-                  </button>
-                ))}
+              <div className="flex-1 overflow-y-auto mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {teams.map((team) => (
+                    <button
+                      key={team.teamNumber}
+                      onClick={() => handleTeamSelection(team.teamNumber)}
+                      className="p-4 bg-white border-2 border-gray-400 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 text-center transform hover:scale-105"
+                    >
+                      <div className="font-bold text-black text-lg">Team {team.teamNumber}</div>
+                      <div className="text-sm text-black">Score: {team.score}</div>
+                      <div className="text-xs text-gray-600">{team.correctCount}✓ / {team.wrongCount}✗</div>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="text-center text-red-600 mb-6">
@@ -665,13 +754,19 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
               
               <div className="space-y-3">
                 {currentQuestion.options.map((option, index) => (
-                  <div
+                  <button
                     key={index}
-                    className={`w-full p-4 border-2 rounded-lg ${
+                    onClick={() => !showAnswer && handleOptionClick(index)}
+                    disabled={showAnswer}
+                    className={`w-full p-4 border-2 rounded-lg transition-all duration-200 ${
                       showAnswer && index === currentQuestion.correctIndex
                         ? 'bg-green-100 border-green-500'
-                        : 'bg-white border-gray-400'
-                    }`}
+                        : showAnswer && answerResult && answerResult.selectedOption === index && index !== currentQuestion.correctIndex
+                        ? 'bg-red-100 border-red-500'
+                        : showAnswer
+                        ? 'bg-gray-100 border-gray-300'
+                        : 'bg-white border-gray-400 hover:border-blue-500 hover:bg-blue-50'
+                    } ${!showAnswer ? 'cursor-pointer transform hover:scale-105' : 'cursor-default'}`}
                   >
                     <div className="flex items-center space-x-3">
                       <span className="font-bold text-xl text-black">{String.fromCharCode(65 + index)}.</span>
@@ -679,17 +774,36 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
                       {showAnswer && index === currentQuestion.correctIndex && (
                         <Check className="w-5 h-5 text-green-600 ml-auto" />
                       )}
+                      {showAnswer && answerResult && answerResult.selectedOption === index && index !== currentQuestion.correctIndex && (
+                        <X className="w-5 h-5 text-red-600 ml-auto" />
+                      )}
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
+              
+              {/* Show Answer Button */}
+              {!showAnswer && (game?.allowShowAnswer ?? false) && (
+                <div className="mt-4 text-center">
+                  <button
+                    onClick={handleShowAnswer}
+                    className="px-6 py-2 bg-orange-500 text-white rounded-lg font-semibold hover:bg-orange-600 transition-colors flex items-center space-x-2 mx-auto"
+                  >
+                    <Eye className="w-4 h-4" />
+                    <span>Show Answer</span>
+                  </button>
+                </div>
+              )}
             </div>
 
             {!showAnswer && (
               <div className="space-y-4">
-                <div className="flex items-center justify-center mb-4">
-                  <div className="text-lg font-semibold text-gray-800">
+                <div className="text-center mb-4">
+                  <div className="text-lg font-semibold text-gray-800 mb-2">
                     Team {selectedTeam} is attempting this question
+                  </div>
+                  <div className="text-sm text-blue-600 font-medium">
+                    💡 Click any option above to select it, or use manual controls below
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
@@ -718,20 +832,44 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
               </div>
             )}
 
-            {showAnswer && answerResult && (
-              <div className={`p-6 rounded-lg border-2 ${answerResult.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
-                <div className={`text-2xl font-bold mb-3 ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                  {answerResult.isCorrect ? '✅ Correct!' : '❌ Incorrect!'}
-                </div>
-                <div className={`text-xl font-semibold mb-2 ${answerResult.scoreChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  Team {answerResult.team.number}: {answerResult.scoreChange > 0 ? '+' : ''}{answerResult.scoreChange} points
-                </div>
-                <div className="text-gray-700 font-medium">
-                  {answerResult.isCorrect ? '🎉 Great job!' : '💭 Better luck next time!'}
-                </div>
-                <div className="text-gray-600 text-sm mt-3 bg-white p-2 rounded border">
-                  <strong>Updated Stats:</strong> Score: {answerResult.team.score} | ✅ Correct: {answerResult.team.correctCount} | ❌ Wrong: {answerResult.team.wrongCount}
-                </div>
+            {showAnswer && (
+              <div>
+                {answerResult ? (
+                  <div className={`p-6 rounded-lg border-2 ${answerResult.isCorrect ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+                    <div className={`text-2xl font-bold mb-3 ${answerResult.isCorrect ? 'text-green-700' : 'text-red-700'}`}>
+                      {answerResult.isCorrect ? '✅ Correct!' : '❌ Incorrect!'}
+                    </div>
+                    <div className={`text-xl font-semibold mb-2 ${answerResult.scoreChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      Team {answerResult.team.number}: {answerResult.scoreChange > 0 ? '+' : ''}{answerResult.scoreChange} points
+                    </div>
+                    <div className="text-gray-700 font-medium mb-3">
+                      {answerResult.isCorrect ? '🎉 Great job!' : '💭 Better luck next time!'}
+                    </div>
+                    {answerResult.selectedOption !== undefined && (
+                      <div className="text-gray-700 text-sm mb-3 bg-white p-3 rounded border">
+                        <div className="flex items-center justify-between">
+                          <span><strong>Team selected:</strong> Option {String.fromCharCode(65 + answerResult.selectedOption)}</span>
+                          <span><strong>Correct answer:</strong> Option {String.fromCharCode(65 + answerResult.correctAnswer)}</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-gray-600 text-sm bg-white p-2 rounded border">
+                      <strong>Updated Stats:</strong> Score: {answerResult.team.score} | ✅ Correct: {answerResult.team.correctCount} | ❌ Wrong: {answerResult.team.wrongCount}
+                    </div>
+                  </div>
+                ) : showAnswerRevealed && (
+                  <div className="p-6 rounded-lg border-2 bg-blue-50 border-blue-200">
+                    <div className="text-2xl font-bold mb-3 text-blue-700">
+                      👁️ Answer Revealed
+                    </div>
+                    <div className="text-gray-700 font-medium mb-3">
+                      The correct answer is highlighted above.
+                    </div>
+                    <div className="text-gray-700 text-sm bg-white p-3 rounded border">
+                      <span><strong>Correct answer:</strong> Option {String.fromCharCode(65 + currentQuestion.correctIndex)}</span>
+                    </div>
+                  </div>
+                )}
                 <button
                   onClick={closeQuestion}
                   className="w-full mt-4 bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
@@ -784,9 +922,9 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         {/* Leaderboard */}
         <div className="lg:col-span-1">
           <h2 className="text-2xl font-bold text-white mb-6">Leaderboard</h2>
-          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+          <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 max-h-[70vh] flex flex-col">
             {leaderboard.length > 0 ? (
-              <div className="space-y-4">
+              <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                 {leaderboard.map((team, index) => (
                   <div key={team.teamNumber} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -819,6 +957,48 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
           </div>
         </div>
       </div>
+
+      {/* Pass Team Selection Modal */}
+      {showPassTeamSelection && currentQuestion && (
+        <div className="fixed inset-0 bg-black/75 flex items-center justify-center z-[200]">
+          <div className="bg-white rounded-xl p-8 max-w-4xl w-full mx-4 shadow-2xl max-h-[90vh] flex flex-col">
+            <h2 className="text-2xl font-bold mb-4 text-black">🔄 Pass Question</h2>
+            <p className="text-black mb-6">
+              Team {selectedTeam} wants to pass this question. Select which team should receive it:
+            </p>
+            {teams.length > 0 ? (
+              <div className="flex-1 overflow-y-auto mb-6">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {teams
+                    .filter(team => team.teamNumber !== selectedTeam)
+                    .map((team) => (
+                    <button
+                      key={team.teamNumber}
+                      onClick={() => handlePassToTeam(team.teamNumber)}
+                      className="p-4 bg-white border-2 border-gray-400 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition-all duration-200 text-center transform hover:scale-105"
+                    >
+                      <div className="font-bold text-black text-lg">Team {team.teamNumber}</div>
+                      <div className="text-sm text-black">Score: {team.score}</div>
+                      <div className="text-xs text-gray-600">{team.correctCount}✓ / {team.wrongCount}✗</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-center text-red-600 mb-6">
+                <p className="font-semibold">No other teams available!</p>
+                <p className="text-sm">Cannot pass question.</p>
+              </div>
+            )}
+            <button
+              onClick={() => setShowPassTeamSelection(false)}
+              className="w-full bg-gray-500 text-white py-3 rounded-lg font-semibold hover:bg-gray-600 transition-colors"
+            >
+              Cancel Pass
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
