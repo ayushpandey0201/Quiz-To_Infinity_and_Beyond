@@ -10,7 +10,7 @@ interface Game {
   description: string;
   status: 'not-started' | 'live' | 'finished';
   createdAt: string;
-  movies: any[];
+  movies: unknown[];
 }
 
 export default function PlayPage() {

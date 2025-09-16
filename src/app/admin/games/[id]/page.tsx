@@ -461,7 +461,7 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
           <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
             <h2 className="text-2xl font-bold mb-4 text-black">Delete Movie</h2>
             <p className="text-gray-700 mb-6">
-              Are you sure you want to delete "<strong>{deletingMovie.title}</strong>"? 
+              Are you sure you want to delete &quot;<strong>{deletingMovie.title}</strong>&quot;? 
               This will also delete all questions associated with this movie. This action cannot be undone.
             </p>
             <div className="flex space-x-4">
@@ -593,7 +593,7 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
       {movies.length >= 30 && (
         <div className="mt-8 p-4 bg-yellow-500/20 border border-yellow-500 rounded-lg">
           <p className="text-yellow-300">
-            You've reached the maximum limit of 30 movies per game.
+            You&apos;ve reached the maximum limit of 30 movies per game.
           </p>
         </div>
       )}

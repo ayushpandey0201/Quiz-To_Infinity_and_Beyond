@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
     
     // This is a simplified setup for Next.js API routes
     // In production, you'd want to use a custom server
-    const httpServer = (req as any).socket?.server;
+    const httpServer = (req as NextRequest & { socket?: { server?: unknown } }).socket?.server;
     
     if (httpServer) {
       const io = initSocket(httpServer);

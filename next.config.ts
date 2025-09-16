@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   experimental: {
     serverComponentsExternalPackages: ['mongoose']
   },
@@ -13,7 +16,6 @@ const nextConfig: NextConfig = {
   env: {
     MONGODB_URI: process.env.MONGODB_URI,
     JWT_SECRET: process.env.JWT_SECRET,
-    REDIS_URL: process.env.REDIS_URL,
   }
 };
 

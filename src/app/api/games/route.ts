@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../backend/lib/mongodb';
-import { Game, Movie, Level, Question, Team } from '../../../../backend/models';
+import { Game } from '../../../../backend/models';
 
 export async function GET() {
   try {

@@ -59,7 +59,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [selectedTeam, setSelectedTeam] = useState<number>(1);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showAnswer, setShowAnswer] = useState(false);
-  const [answerResult, setAnswerResult] = useState<any>(null);
+  const [answerResult, setAnswerResult] = useState<unknown>(null);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [loading, setLoading] = useState(true);
   const [showTeamSelection, setShowTeamSelection] = useState(false);
@@ -162,7 +162,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         
         // Immediately update local state for instant UI response
         setTeams(createdTeams);
-        setLeaderboard(createdTeams.map((team: any, index: number) => ({
+        setLeaderboard(createdTeams.map((team: Team, index: number) => ({
           rank: index + 1,
           teamNumber: team.teamNumber,
           score: team.score,
