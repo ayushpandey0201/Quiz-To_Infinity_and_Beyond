@@ -23,7 +23,6 @@ A production-ready, full-stack quiz event web application built with Next.js, Mo
 - **Frontend**: Next.js 15 with App Router, React 19, TypeScript, Tailwind CSS 4
 - **Backend**: Next.js API Routes, Socket.IO for real-time updates
 - **Database**: MongoDB with Mongoose ODM
-- **Cache**: Redis for performance optimization and session management
 - **Authentication**: JWT-based admin authentication with bcrypt
 - **Deployment**: Docker & Docker Compose
 - **Development**: ESLint, TypeScript strict mode
@@ -40,7 +39,7 @@ A production-ready, full-stack quiz event web application built with Next.js, Mo
 ### Prerequisites
 - Node.js 18+
 - Docker and Docker Compose (recommended)
-- Or MongoDB and Redis running locally
+- Or MongoDB running locally
 
 ### Option 1: Docker Setup (Recommended)
 
@@ -67,12 +66,11 @@ npm install
 2. Set up environment variables by creating `.env.local`:
 ```env
 MONGODB_URI=mongodb://localhost:27017/quiz-app
-REDIS_URL=redis://localhost:6379
 JWT_SECRET=your-secret-key-here
 ADMIN_PASSWORD_HASH=your-bcrypt-hashed-password
 ```
 
-3. Start MongoDB and Redis locally
+3. Start MongoDB locally
 
 4. Run the development server using the provided script:
 ```bash
@@ -105,7 +103,6 @@ The `start-dev.sh` script will verify your environment configuration before star
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `MONGODB_URI` | MongoDB connection string | `mongodb://localhost:27017/quiz-app` | ✅ |
-| `REDIS_URL` | Redis connection string | `redis://localhost:6379` | ❌ |
 | `JWT_SECRET` | Secret for JWT token signing | `your-secret-key-here` | ✅ |
 | `ADMIN_PASSWORD_HASH` | Bcrypt hash of admin password | Hash of `admin123` | ❌ |
 | `NODE_ENV` | Environment mode | `development` | ❌ |
@@ -226,7 +223,6 @@ backend/                 # Backend logic (following user preference)
 ├── lib/                # Core utilities
 │   ├── auth.ts         # JWT & password authentication
 │   ├── mongodb.ts      # Database connection
-│   ├── redis.ts        # Redis cache management
 │   └── scoring.ts      # Game scoring algorithms
 └── socket/             # Real-time communication
     └── socketHandler.ts # Socket.IO event handlers

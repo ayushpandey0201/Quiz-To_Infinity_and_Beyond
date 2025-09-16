@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Film, HelpCircle } from 'lucide-react';
+import { ArrowLeft, Film, HelpCircle, Edit, Trash2, Plus } from 'lucide-react';
 
 interface Question {
   _id: string;
@@ -44,14 +44,19 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
   const [loading, setLoading] = useState(true);
   const [showMovieForm, setShowMovieForm] = useState(false);
   const [showQuestionForm, setShowQuestionForm] = useState(false);
+  const [showEditQuestionForm, setShowEditQuestionForm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [newMovieTitle, setNewMovieTitle] = useState('');
   const [selectedMovie, setSelectedMovie] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<'easy' | 'medium' | 'hard'>('easy');
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const [deletingMovie, setDeletingMovie] = useState<Movie | null>(null);
   const [newQuestion, setNewQuestion] = useState({
     text: '',
     options: ['', '', '', ''],
     correctIndex: 0,
   });
+  const [expandedMovie, setExpandedMovie] = useState<string | null>(null);
 
   useEffect(() => {
     fetchGame();
@@ -131,6 +136,73 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
     } catch (error) {
       console.error('Error adding question:', error);
     }
+  };
+
+  const handleEditQuestion = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingQuestion || !editingQuestion.text || editingQuestion.options.some(opt => !opt.trim())) return;
+
+    try {
+      const response = await fetch(`/api/questions/${editingQuestion._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: editingQuestion.text,
+          options: editingQuestion.options,
+          correctIndex: editingQuestion.correctIndex,
+        }),
+      });
+
+      if (response.ok) {
+        setEditingQuestion(null);
+        setShowEditQuestionForm(false);
+        fetchMovies();
+      }
+    } catch (error) {
+      console.error('Error updating question:', error);
+    }
+  };
+
+  const handleDeleteMovie = async () => {
+    if (!deletingMovie) return;
+
+    try {
+      const response = await fetch(`/api/movies/${deletingMovie._id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        setDeletingMovie(null);
+        setShowDeleteConfirm(false);
+        fetchMovies();
+      }
+    } catch (error) {
+      console.error('Error deleting movie:', error);
+    }
+  };
+
+  const handleDeleteQuestion = async (questionId: string) => {
+    try {
+      const response = await fetch(`/api/questions/${questionId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchMovies();
+      }
+    } catch (error) {
+      console.error('Error deleting question:', error);
+    }
+  };
+
+  const startEditQuestion = (question: Question) => {
+    setEditingQuestion(question);
+    setShowEditQuestionForm(true);
+  };
+
+  const startDeleteMovie = (movie: Movie) => {
+    setDeletingMovie(movie);
+    setShowDeleteConfirm(true);
   };
 
   const getLevelColor = (level: string) => {
@@ -316,25 +388,183 @@ export default function GameDetailsPage({ params }: { params: { id: string } }) 
         </div>
       )}
 
+      {/* Edit Question Modal */}
+      {showEditQuestionForm && editingQuestion && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6 text-black">Edit Question</h2>
+            <form onSubmit={handleEditQuestion}>
+              <div className="mb-4">
+                <label className="block text-black font-semibold mb-2">Question</label>
+                <textarea
+                  value={editingQuestion.text}
+                  onChange={(e) => setEditingQuestion({ ...editingQuestion, text: e.target.value })}
+                  className="w-full p-3 bg-white border-2 border-gray-400 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 h-24 resize-none"
+                  placeholder="Enter your question"
+                  required
+                />
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-black font-semibold mb-2">Options</label>
+                {editingQuestion.options.map((option, index) => (
+                  <div key={index} className="flex items-center space-x-3 mb-2">
+                    <input
+                      type="radio"
+                      name="editCorrect"
+                      checked={editingQuestion.correctIndex === index}
+                      onChange={() => setEditingQuestion({ ...editingQuestion, correctIndex: index })}
+                      className="w-4 h-4 text-blue-600 bg-white border-2 border-gray-400 focus:ring-blue-500"
+                    />
+                    <input
+                      type="text"
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...editingQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setEditingQuestion({ ...editingQuestion, options: newOptions });
+                      }}
+                      className="flex-1 p-3 bg-white border-2 border-gray-400 rounded-lg text-black placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder={`Option ${index + 1}`}
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex space-x-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowEditQuestionForm(false);
+                    setEditingQuestion(null);
+                  }}
+                  className="flex-1 py-3 bg-white border-2 border-gray-400 rounded-lg font-semibold text-black hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
+                >
+                  Update Question
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Movie Confirmation Modal */}
+      {showDeleteConfirm && deletingMovie && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h2 className="text-2xl font-bold mb-4 text-black">Delete Movie</h2>
+            <p className="text-gray-700 mb-6">
+              Are you sure you want to delete "<strong>{deletingMovie.title}</strong>"? 
+              This will also delete all questions associated with this movie. This action cannot be undone.
+            </p>
+            <div className="flex space-x-4">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false);
+                  setDeletingMovie(null);
+                }}
+                className="flex-1 py-3 bg-white border-2 border-gray-400 rounded-lg font-semibold text-black hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteMovie}
+                className="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors"
+              >
+                Delete Movie
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Movies Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
         {movies.map((movie) => (
           <div key={movie._id} className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white truncate">{movie.title}</h3>
-              <span className="text-gray-400 text-sm">#{movie.index + 1}</span>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-400 text-sm">#{movie.index + 1}</span>
+                <button
+                  onClick={() => startDeleteMovie(movie)}
+                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded-lg transition-colors"
+                  title="Delete Movie"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             
             <div className="space-y-3">
               {(['easy', 'medium', 'hard'] as const).map((level) => (
-                <div key={level} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <span className={`w-3 h-3 rounded-full ${getLevelColor(level)}`} />
-                    <span className="text-white capitalize font-semibold">{level}</span>
+                <div key={level}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className={`w-3 h-3 rounded-full ${getLevelColor(level)}`} />
+                      <span className="text-white capitalize font-semibold">{level}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-300">
+                        {getLevelQuestionCount(movie, level)} questions
+                      </span>
+                      <button
+                        onClick={() => setExpandedMovie(expandedMovie === `${movie._id}-${level}` ? null : `${movie._id}-${level}`)}
+                        className="p-1 text-gray-400 hover:text-white transition-colors"
+                      >
+                        <Plus className={`w-4 h-4 transition-transform ${expandedMovie === `${movie._id}-${level}` ? 'rotate-45' : ''}`} />
+                      </button>
+                    </div>
                   </div>
-                  <span className="text-gray-300">
-                    {getLevelQuestionCount(movie, level)} questions
-                  </span>
+                  
+                  {expandedMovie === `${movie._id}-${level}` && movie.levels[level]?.questions && (
+                    <div className="mt-2 ml-5 space-y-2">
+                      {movie.levels[level].questions.map((question: Question, qIndex: number) => (
+                        <div key={question._id} className="bg-white/5 rounded-lg p-3 border border-white/10">
+                          <div className="flex items-start justify-between">
+                            <div className="flex-1">
+                              <p className="text-gray-200 text-sm mb-2">
+                                {qIndex + 1}. {question.text}
+                              </p>
+                              <div className="space-y-1">
+                                {question.options.map((option: string, optIndex: number) => (
+                                  <p key={optIndex} className={`text-xs ${question.correctIndex === optIndex ? 'text-green-400 font-semibold' : 'text-gray-400'}`}>
+                                    {String.fromCharCode(65 + optIndex)}. {option}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex space-x-1 ml-2">
+                              <button
+                                onClick={() => startEditQuestion(question)}
+                                className="p-1 text-blue-400 hover:text-blue-300 hover:bg-blue-500/20 rounded transition-colors"
+                                title="Edit Question"
+                              >
+                                <Edit className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteQuestion(question._id)}
+                                className="p-1 text-red-400 hover:text-red-300 hover:bg-red-500/20 rounded transition-colors"
+                                title="Delete Question"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      {getLevelQuestionCount(movie, level) === 0 && (
+                        <p className="text-gray-500 text-sm italic">No questions yet</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

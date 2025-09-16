@@ -1,0 +1,16 @@
+# Production Environment Variables Template
+# Add these to your Vercel project environment variables
+
+# Database Configuration
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/quiz-app?retryWrites=true&w=majority
+
+# Authentication
+JWT_SECRET=your-super-secret-jwt-key-min-256-bits
+ADMIN_PASSWORD_HASH=your-bcrypt-hashed-admin-password
+
+# Application Configuration
+NODE_ENV=production
+NEXT_PUBLIC_APP_URL=https://your-app-name.vercel.app
+
+# Default admin password is 'admin123' - change this in production!
+# Generate password hash using: bcrypt.hashSync('your-password', 10)

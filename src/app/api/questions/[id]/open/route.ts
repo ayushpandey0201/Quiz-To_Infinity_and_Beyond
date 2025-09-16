@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../../backend/lib/mongodb';
-import { redisClient } from '../../../../../../backend/lib/redis';
 import { Question } from '../../../../../../backend/models';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -20,13 +19,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // Mark question as opened
     question.opened = true;
     await question.save();
-    
-    // Update cache
-    try {
-      await redisClient.del(`game:${question.gameId}`);
-    } catch (error) {
-      console.warn('Redis cache update failed:', error);
-    }
     
     return NextResponse.json({
       _id: question._id,

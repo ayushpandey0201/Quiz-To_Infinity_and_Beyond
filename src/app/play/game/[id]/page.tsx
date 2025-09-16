@@ -66,6 +66,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [pendingQuestion, setPendingQuestion] = useState<{movieId: string, level: 'easy' | 'medium' | 'hard'} | null>(null);
   const [debugInfo, setDebugInfo] = useState<string>('');
   const [gameId, setGameId] = useState<string>('');
+  const [teamOperationLoading, setTeamOperationLoading] = useState(false);
 
   useEffect(() => {
     const initializeGame = async () => {
@@ -146,6 +147,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   };
 
   const handleCreateTeams = async () => {
+    setTeamOperationLoading(true);
     try {
       const currentGameId = gameId || await params.then(p => p.id);
       const response = await fetch(`/api/games/${currentGameId}/teams`, {
@@ -155,10 +157,25 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       });
 
       if (response.ok) {
+        // Get the created teams from the response
+        const createdTeams = await response.json();
+        
+        // Immediately update local state for instant UI response
+        setTeams(createdTeams);
+        setLeaderboard(createdTeams.map((team: any, index: number) => ({
+          rank: index + 1,
+          teamNumber: team.teamNumber,
+          score: team.score,
+          correctCount: team.correctCount,
+          wrongCount: team.wrongCount
+        })));
+        
         setShowTeamSetup(false);
+        setDebugInfo(`✅ Successfully created ${numberOfTeams} teams`);
+        
+        // Still fetch from server to ensure consistency
         fetchTeams();
         fetchLeaderboard();
-        setDebugInfo(`Successfully created ${numberOfTeams} teams`);
       } else {
         const errorData = await response.json();
         if (response.status === 400 && errorData.error.includes('already created')) {
@@ -169,14 +186,14 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
           setDebugInfo('Teams already exist - loaded existing teams');
         } else {
           console.error('Error creating teams:', errorData);
-          setDebugInfo(`Error creating teams: ${errorData.error}`);
-          alert(`Failed to create teams: ${errorData.error}`);
+          setDebugInfo(`❌ Error creating teams: ${errorData.error}`);
         }
       }
     } catch (error) {
       console.error('Error creating teams:', error);
-      setDebugInfo(`Network error: ${error}`);
-      alert('Network error while creating teams. Please try again.');
+      setDebugInfo(`❌ Network error creating teams: ${error}`);
+    } finally {
+      setTeamOperationLoading(false);
     }
   };
 
@@ -396,20 +413,20 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         fetchMovies();
         fetchTeams();
         fetchLeaderboard();
-        setDebugInfo('Game restarted successfully');
-        alert('Game restarted successfully! All questions are now available again.');
+        setDebugInfo('✅ Game restarted successfully! All questions are now available again.');
       } else {
-        alert('Failed to restart game. Please try again.');
+        setDebugInfo('❌ Failed to restart game. Please try again.');
       }
     } catch (error) {
       console.error('Error restarting game:', error);
-      alert('Error restarting game. Please try again.');
+      setDebugInfo('❌ Error restarting game. Please try again.');
     }
   };
 
   const handleResetTeams = async () => {
     if (!confirm('Are you sure you want to reset teams? This will delete all existing teams and their scores.')) return;
 
+    setTeamOperationLoading(true);
     try {
       // First delete existing teams
       const currentGameId = gameId || await params.then(p => p.id);
@@ -418,15 +435,21 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       });
 
       if (deleteResponse.ok) {
+        // Immediately update local state to reflect team deletion
+        setTeams([]);
+        setLeaderboard([]);
+        
         // Then show team setup modal
         setShowTeamSetup(true);
-        setDebugInfo('Teams reset - ready to create new teams');
+        setDebugInfo('✅ Teams reset successfully - ready to create new teams');
       } else {
-        alert('Failed to reset teams. Please try again.');
+        setDebugInfo('❌ Failed to reset teams. Please try again.');
       }
     } catch (error) {
       console.error('Error resetting teams:', error);
-      alert('Error resetting teams. Please try again.');
+      setDebugInfo('❌ Error resetting teams. Please try again.');
+    } finally {
+      setTeamOperationLoading(false);
     }
   };
 
@@ -475,10 +498,11 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
           {teams.length > 0 && (
             <button
               onClick={handleResetTeams}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2"
+              disabled={teamOperationLoading}
+              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Users className="w-4 h-4" />
-              <span>Reset Teams</span>
+              <span>{teamOperationLoading ? 'Resetting...' : 'Reset Teams'}</span>
             </button>
           )}
           <div className="text-right">
@@ -515,9 +539,10 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
                   </button>
                   <button
                     onClick={handleResetTeams}
-                    className="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors"
+                    disabled={teamOperationLoading}
+                    className="flex-1 bg-red-500 text-white py-3 rounded-lg font-semibold hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Reset Teams
+                    {teamOperationLoading ? '⏳ Resetting...' : 'Reset Teams'}
                   </button>
                 </div>
               </div>
@@ -536,9 +561,10 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
                 </div>
                 <button
                   onClick={handleCreateTeams}
-                  className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors"
+                  disabled={teamOperationLoading}
+                  className="w-full bg-blue-500 text-white py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Teams
+                  {teamOperationLoading ? '⏳ Creating Teams...' : 'Create Teams'}
                 </button>
               </>
             )}

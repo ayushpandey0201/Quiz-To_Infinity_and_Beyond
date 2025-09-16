@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../../backend/lib/mongodb';
-import { redisClient } from '../../../../../../backend/lib/redis';
 import { Question, Team } from '../../../../../../backend/models';
 import { calculateScore } from '../../../../../../backend/lib/scoring';
 
@@ -41,7 +40,25 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     });
     
     if (!team) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
+      // Debug logging
+      console.error('Team not found:', {
+        gameId: question.gameId,
+        teamNumber,
+        questionId: id
+      });
+      
+      // Let's check what teams exist for this game
+      const existingTeams = await Team.find({ gameId: question.gameId });
+      console.error('Existing teams for this game:', existingTeams.map(t => ({ teamNumber: t.teamNumber, _id: t._id })));
+      
+      return NextResponse.json({ 
+        error: 'Team not found',
+        debug: {
+          requestedTeam: teamNumber,
+          gameId: question.gameId,
+          existingTeams: existingTeams.map(t => t.teamNumber)
+        }
+      }, { status: 404 });
     }
     
     team.score += scoreChange;
@@ -57,12 +74,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     question.answered = true;
     await question.save();
     
-    // Clear leaderboard cache to force refresh
-    try {
-      await redisClient.del(`leaderboard:${question.gameId}`);
-    } catch (error) {
-      console.warn('Redis cache update failed:', error);
-    }
+    // Skip Redis cache clearing since it's not set up
     
     return NextResponse.json({
       isCorrect,

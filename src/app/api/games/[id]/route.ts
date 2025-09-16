@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../backend/lib/mongodb';
-import { redisClient } from '../../../../../backend/lib/redis';
 import { Game, Movie, Level, Question, Team } from '../../../../../backend/models';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -44,12 +43,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
     }
     
-    // Clear cache when game is updated
-    try {
-      await redisClient.del(`game:${id}`);
-    } catch (error) {
-      console.warn('Redis cache update failed:', error);
-    }
+    // Game updated successfully
     
     return NextResponse.json(game);
   } catch (error) {
@@ -78,13 +72,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       return NextResponse.json({ error: 'Game not found' }, { status: 404 });
     }
     
-    // Clear cache
-    try {
-      await redisClient.del(`game:${id}`);
-      await redisClient.del(`teams:${id}`);
-    } catch (error) {
-      console.warn('Redis cache update failed:', error);
-    }
+    // Game deleted successfully
     
     return NextResponse.json({ message: 'Game deleted successfully' });
   } catch (error) {

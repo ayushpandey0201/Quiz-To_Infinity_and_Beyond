@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../../backend/lib/mongodb';
-import { redisClient } from '../../../../../../backend/lib/redis';
 import { Game } from '../../../../../../backend/models';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -19,9 +18,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     
     game.status = 'live';
     await game.save();
-    
-    // Cache the game state
-    await redisClient.set(`game:${id}`, game, 3600); // 1 hour cache
     
     return NextResponse.json(game);
   } catch (error) {

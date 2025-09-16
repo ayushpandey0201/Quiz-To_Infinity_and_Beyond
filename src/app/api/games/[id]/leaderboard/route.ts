@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../../backend/lib/mongodb';
-import { redisClient } from '../../../../../../backend/lib/redis';
 import { Team } from '../../../../../../backend/models';
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -8,12 +7,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     await connectDB();
     const { id } = await params;
     
-    // Check cache first
-    const cachedLeaderboard = await redisClient.get(`leaderboard:${id}`);
-    if (cachedLeaderboard) {
-      return NextResponse.json(JSON.parse(cachedLeaderboard));
-    }
-    
+    // Skip Redis cache since it's not set up
     const teams = await Team.find({ gameId: id })
       .sort({ score: -1, correctCount: -1, teamNumber: 1 })
       .select('teamNumber score correctCount wrongCount');
@@ -26,8 +20,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       wrongCount: team.wrongCount
     }));
     
-    // Cache for 30 seconds (frequently updated)
-    await redisClient.set(`leaderboard:${id}`, leaderboard, 30);
+    console.log(`Leaderboard for game ${id}:`, leaderboard);
     
     return NextResponse.json(leaderboard);
   } catch (error) {
