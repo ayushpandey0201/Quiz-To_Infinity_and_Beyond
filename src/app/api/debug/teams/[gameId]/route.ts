@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '../../../../../../backend/lib/mongodb';
 import { Team, Game } from '../../../../../../backend/models';
 
-export async function GET(req: NextRequest, { params }: { params: { gameId: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ gameId: string }> }) {
   try {
     await connectDB();
-    const gameId = params.gameId;
+    const { gameId } = await params;
     
     // Get game info
     const game = await Game.findById(gameId);
