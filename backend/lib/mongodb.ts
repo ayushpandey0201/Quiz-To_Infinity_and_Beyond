@@ -6,15 +6,21 @@ if (!MONGODB_URI) {
   throw new Error("❌ Please define the MONGODB_URI environment variable in Vercel");
 }
 
-
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+// Define the cached connection type
+interface CachedConnection {
+  conn: typeof mongoose | null;
+  promise: Promise<typeof mongoose> | null;
 }
 
-let cached = global.mongoose;
+// Extend the global type
+declare global {
+  var mongoose: CachedConnection | undefined;
+}
 
-if (!cached) {
-  cached = global.mongoose = { conn: null, promise: null };
+let cached: CachedConnection = global.mongoose || { conn: null, promise: null };
+
+if (!global.mongoose) {
+  global.mongoose = cached;
 }
 
 async function connectDB() {
@@ -27,10 +33,9 @@ async function connectDB() {
       bufferCommands: false,
     };
 
-    cached.promise = mongoose.connect(MONGODB_URI, opts).then((mongoose) => {
-      return mongoose;
-    });
+    cached.promise = mongoose.connect(MONGODB_URI, opts);
   }
+  
   cached.conn = await cached.promise;
   return cached.conn;
 }
