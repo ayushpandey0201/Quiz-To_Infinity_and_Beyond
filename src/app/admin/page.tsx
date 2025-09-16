@@ -227,7 +227,7 @@ export default function AdminPage() {
       {/* Games Grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {Array.isArray(games) && games.map((game) => (
-          <div key={game._id} className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20">
+          <div key={game._id} className="bg-white/10 backdrop-blur-lg rounded-xl p-5 border border-white/20 scale-90">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-bold text-white truncate">{game.title}</h3>
               <span className={`px-3 py-1 rounded-full text-white text-sm font-semibold ${getStatusColor(game.status)}`}>
@@ -293,6 +293,7 @@ export default function AdminPage() {
           </button>
         </div>
       )}
+      
     </div>
   );
 }

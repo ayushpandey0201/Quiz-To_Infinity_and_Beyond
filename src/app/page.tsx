@@ -11,6 +11,16 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col items-center justify-center p-8">
       {/* Header */}
       <div className="text-center mb-16">
+        {/* TeamCodeLocked Branding */}
+        <div className="mb-10">
+          <p className="text-transparent bg-gradient-to-r from-cyan-400 via-blue-400 to-purple-400 bg-clip-text font-bold text-3xl font-mono tracking-wider mb-3">
+            &lt;TeamCodeLocked/&gt;
+          </p>
+          <p className="text-cyan-300 text-lg tracking-wide font-medium">
+            presents
+          </p>
+        </div>
+        
         <div className="flex items-center justify-center mb-6">
           <Rocket className="w-16 h-16 text-yellow-400 mr-4" />
           <h1 className="text-6xl font-bold text-white">
