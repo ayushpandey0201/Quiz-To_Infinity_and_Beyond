@@ -119,7 +119,7 @@ export default function PlayPage() {
           <div className="text-gray-400 text-xl mb-4">No games available to play</div>
           <p className="text-gray-500 mb-4">Check back later or contact an admin to start a game.</p>
           <p className="text-red-400 text-sm mb-8">
-            If you're seeing this and expect games to be available, there might be a database connection issue.
+            If you&apos;re seeing this and expect games to be available, there might be a database connection issue.
           </p>
           <Link href="/" className="bg-blue-500 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors">
             Back to Home
