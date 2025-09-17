@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Users, ArrowRight, Check, X, Settings, Eye } from 'lucide-react';
+import { ArrowLeft, Users, ArrowRight, Check, X, Settings, Eye, RefreshCw } from 'lucide-react';
 // Removed socket.io-client import - using polling instead
 
 interface Question {
@@ -80,6 +80,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   const [teamOperationLoading, setTeamOperationLoading] = useState(false);
   const [showPassTeamSelection, setShowPassTeamSelection] = useState(false);
   const [showAnswerRevealed, setShowAnswerRevealed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     const initializeGame = async () => {
@@ -123,12 +124,14 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         setLoading(false);
       }
 
-      // Set up polling for updates every 3 seconds
+      // Minimal polling - only check for updates occasionally in the background
+      // Most updates happen through user actions, so we rely on manual refresh
       const pollInterval = setInterval(() => {
-        fetchLeaderboard(id);
-        fetchTeams(id);
-        fetchGame(id);
-      }, 3000);
+        // Very light polling - only fetch leaderboard if no modal is open
+        if (!currentQuestion && !showTeamSetup && !showTeamSelection && !showPassTeamSelection) {
+          fetchLeaderboard(id);
+        }
+      }, 30000); // Poll every 30 seconds instead of 3 seconds
 
       return () => {
         clearInterval(pollInterval);
@@ -136,7 +139,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
     };
 
     initializeGame();
-  }, [params]);
+  }, [params, currentQuestion, showTeamSetup, showTeamSelection, showPassTeamSelection]);
 
   const fetchGame = async (id?: string) => {
     try {
@@ -184,6 +187,25 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       setLeaderboard(data);
     } catch (error) {
       console.error('Error fetching leaderboard:', error);
+    }
+  };
+
+  const handleManualRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const currentGameId = gameId || await params.then(p => p.id);
+      await Promise.all([
+        fetchGame(currentGameId),
+        fetchMovies(currentGameId),
+        fetchTeams(currentGameId),
+        fetchLeaderboard(currentGameId)
+      ]);
+      setDebugInfo('✅ Data refreshed successfully!');
+    } catch (error) {
+      console.error('Error refreshing data:', error);
+      setDebugInfo('❌ Error refreshing data');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -361,9 +383,8 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         const result = await response.json();
         setAnswerResult(result);
         setShowAnswer(true);
-        // Immediately fetch updated data
+        // Only fetch leaderboard after answering (scores changed)
         fetchLeaderboard();
-        fetchTeams();
         // Question modal stays open until manually closed
       } else {
         const errorData = await response.json();
@@ -408,9 +429,8 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         const result = await response.json();
         setAnswerResult(result);
         setShowAnswer(true);
-        // Immediately fetch updated data
+        // Only fetch leaderboard after answering (scores changed)
         fetchLeaderboard();
-        fetchTeams();
         // Question modal stays open until manually closed
       } else {
         const errorData = await response.json();
@@ -452,9 +472,8 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         
         setAnswerResult(resultWithSelection);
         setShowAnswer(true);
-        // Immediately fetch updated data
+        // Only fetch leaderboard after answering (scores changed)
         fetchLeaderboard();
-        fetchTeams();
         
         // Show immediate feedback
         const isCorrect = selectedOptionIndex === currentQuestion.correctIndex;
@@ -595,34 +614,45 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 sm:p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
         <div className="flex items-center space-x-4">
           <Link href="/play" className="text-white hover:text-yellow-400 transition-colors">
             <ArrowLeft className="w-8 h-8" />
           </Link>
           <div>
-            <h1 className="text-4xl font-bold text-white">{game?.title}</h1>
-            <p className="text-gray-300">{game?.description}</p>
+            <h1 className="text-2xl sm:text-4xl font-bold text-white">{game?.title}</h1>
+            <p className="text-gray-300 text-sm sm:text-base">{game?.description}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex flex-wrap items-center gap-2 sm:space-x-4">
+          <button
+            onClick={handleManualRefresh}
+            disabled={refreshing}
+            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-1 sm:space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+          >
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            <span className="sm:hidden">↻</span>
+          </button>
           <button
             onClick={handleRestartGame}
-            className="bg-gradient-to-r from-red-500 to-orange-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2"
+            className="bg-gradient-to-r from-red-500 to-orange-600 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-1 sm:space-x-2 text-sm sm:text-base"
           >
             <Settings className="w-4 h-4" />
-            <span>Restart Game</span>
+            <span className="hidden sm:inline">Restart Game</span>
+            <span className="sm:hidden">⚙</span>
           </button>
           {teams.length > 0 && (
             <button
               onClick={handleResetTeams}
               disabled={teamOperationLoading}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-3 sm:px-4 py-2 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center space-x-1 sm:space-x-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
             >
               <Users className="w-4 h-4" />
-              <span>{teamOperationLoading ? 'Resetting...' : 'Reset Teams'}</span>
+              <span className="hidden sm:inline">{teamOperationLoading ? 'Resetting...' : 'Reset Teams'}</span>
+              <span className="sm:hidden">👥</span>
             </button>
           )}
           <div className="text-right">

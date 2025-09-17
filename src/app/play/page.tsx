@@ -69,19 +69,19 @@ export default function PlayPage() {
   }
 
   return (
-    <div className="min-h-screen p-8">
+    <div className="min-h-screen p-4 sm:p-8">
       {/* Header */}
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center space-x-4">
           <Link href="/" className="text-white hover:text-yellow-400 transition-colors">
             <Home className="w-8 h-8" />
           </Link>
-          <h1 className="text-4xl font-bold text-white">Choose Your Adventure</h1>
+          <h1 className="text-2xl sm:text-4xl font-bold text-white">Choose Your Adventure</h1>
         </div>
       </div>
 
       {/* Games Grid */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {games.filter(game => game.status === 'live').map((game) => (
           <Link key={game._id} href={`/play/game/${game._id}`}>
             <div className="bg-white/10 backdrop-blur-lg rounded-xl p-6 border border-white/20 hover:bg-white/20 hover:scale-105 transition-all duration-300 cursor-pointer">
