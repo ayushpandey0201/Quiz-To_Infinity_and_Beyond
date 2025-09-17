@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Users, ArrowRight, Check, X, Settings, Eye } from 'lucide-react';
-import { io, Socket } from 'socket.io-client';
+// Removed socket.io-client import - using polling instead
 
 interface Question {
   _id: string;
@@ -71,7 +71,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
       wrongCount: number;
     };
   } | null>(null);
-  const [socket, setSocket] = useState<Socket | null>(null);
+  // Removed socket state - using polling instead
   const [loading, setLoading] = useState(true);
   const [showTeamSelection, setShowTeamSelection] = useState(false);
   const [pendingQuestion, setPendingQuestion] = useState<{movieId: string, level: 'easy' | 'medium' | 'hard'} | null>(null);
@@ -123,19 +123,15 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         setLoading(false);
       }
 
-      // Initialize Socket.IO
-      const socketInstance = io();
-      setSocket(socketInstance);
-
-      socketInstance.emit('join-game', id);
-
-      socketInstance.on('leaderboard-update', (updatedLeaderboard) => {
-        setLeaderboard(updatedLeaderboard);
-      });
+      // Set up polling for updates every 3 seconds
+      const pollInterval = setInterval(() => {
+        fetchLeaderboard(id);
+        fetchTeams(id);
+        fetchGame(id);
+      }, 3000);
 
       return () => {
-        socketInstance.emit('leave-game', id);
-        socketInstance.disconnect();
+        clearInterval(pollInterval);
       };
     };
 
@@ -276,7 +272,7 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
     }
 
     const levelQuestions = movie.levels[pendingQuestion.level]?.questions || [];
-    const nextQuestion = levelQuestions.find(q => !q.opened && !q.answered);
+    const nextQuestion = levelQuestions.find(q => !q.opened);
     
     if (!nextQuestion) {
       setDebugInfo('No more questions available in this level');
@@ -365,7 +361,9 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         const result = await response.json();
         setAnswerResult(result);
         setShowAnswer(true);
+        // Immediately fetch updated data
         fetchLeaderboard();
+        fetchTeams();
         // Question modal stays open until manually closed
       } else {
         const errorData = await response.json();
@@ -410,7 +408,9 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         const result = await response.json();
         setAnswerResult(result);
         setShowAnswer(true);
+        // Immediately fetch updated data
         fetchLeaderboard();
+        fetchTeams();
         // Question modal stays open until manually closed
       } else {
         const errorData = await response.json();
@@ -452,7 +452,9 @@ export default function GamePlayPage({ params }: { params: Promise<{ id: string 
         
         setAnswerResult(resultWithSelection);
         setShowAnswer(true);
+        // Immediately fetch updated data
         fetchLeaderboard();
+        fetchTeams();
         
         // Show immediate feedback
         const isCorrect = selectedOptionIndex === currentQuestion.correctIndex;
