@@ -16,7 +16,7 @@ export function calculateScore(
   if (isCorrect) {
     score = baseScore.correct; // Full points for correct answer
   } else {
-    score = (baseScore.correct * 0); // 50% negative points for wrong answer
+    score = -(baseScore.correct * 0.50); // 50% negative points for wrong answer
   }
   
   if (isPassed) {
@@ -25,7 +25,7 @@ export function calculateScore(
       score = baseScore.correct * 0.5;
     } else {
       // Passed wrong: 25% deduction (50% of the 50% penalty)
-      score = (baseScore.correct * 0);
+      score = -(baseScore.correct * 0.25);
     }
   }
   
