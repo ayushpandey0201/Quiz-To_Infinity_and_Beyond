@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Film, HelpCircle, Edit, Trash2, Plus, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Film, HelpCircle, Edit, Trash2, Plus, Eye, EyeOff, Target } from 'lucide-react';
 
 interface Question {
   _id: string;
@@ -404,9 +404,9 @@ export default function GameDetailsPage({ params }: { params: Promise<{ id: stri
                   onChange={(e) => setSelectedLevel(e.target.value as 'easy' | 'medium' | 'hard')}
                   className="w-full p-3 bg-white border-2 border-gray-400 rounded-lg text-black focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500"
                 >
-                  <option value="easy">Easy (300 points)</option>
-                  <option value="medium">Medium (600 points)</option>
-                  <option value="hard">Hard (1000 points)</option>
+                  <option value="easy">Easy (10 points)</option>
+                  <option value="medium">Medium (20 points)</option>
+                  <option value="hard">Hard (30 points)</option>
                 </select>
               </div>
 

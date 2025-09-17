@@ -10,9 +10,10 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     // Skip Redis cache since it's not set up
     const teams = await Team.find({ gameId: id })
       .sort({ score: -1, correctCount: -1, teamNumber: 1 })
-      .select('teamNumber score correctCount wrongCount');
+      .select('_id teamNumber score correctCount wrongCount');
     
     const leaderboard = teams.map((team, index) => ({
+      _id: team._id,
       rank: index + 1,
       teamNumber: team.teamNumber,
       score: team.score,
